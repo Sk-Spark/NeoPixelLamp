@@ -262,10 +262,10 @@ void loop() {
   if(now - last_wifi_check_time > WIFI_TIMEOUT) {
     Serial.print("Checking WiFi... ");
     if(WiFi.status() != WL_CONNECTED) {
-      Serial.println("WiFi connection lost. Reconnecting...");
+      Serial.println("WiFi connection lost. Reconnecting...");     
       wifi_setup();
     } else {
-      Serial.println("OK");
+      Serial.println("OK | ip :"+ WiFi.localIP().toString());
     }
     last_wifi_check_time = now;
   }

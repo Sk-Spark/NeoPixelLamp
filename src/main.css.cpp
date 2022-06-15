@@ -19,6 +19,7 @@ body {
   -webkit-box-pack: space-evenly;
       -ms-flex-pack: space-evenly;
           justify-content: space-evenly;
+  min-width: 600px;
 }
 
 .color-picker-panel {
