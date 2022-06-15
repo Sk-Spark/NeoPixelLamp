@@ -22,6 +22,8 @@
 
 extern const char index_html[];
 extern const char main_js[];
+extern const char tinycolor_js[];
+extern const char main_css[];
 
 #define WIFI_SSID "SparkMI"
 #define WIFI_PASSWORD "123456789"
@@ -38,7 +40,7 @@ extern const char main_js[];
 #define max(a,b) ((a)>(b)?(a):(b))
 
 #define LED_PIN 2                       // 0 = GPIO0, 2=GPIO2
-#define LED_COUNT 16
+#define LED_COUNT 10
 
 #define WIFI_TIMEOUT 30000              // checks WiFi every ...ms. Reset after this time, if WiFi cannot reconnect.
 #define HTTP_PORT 80
@@ -151,6 +153,14 @@ void srv_handle_main_js() {
   server.send_P(200,"application/javascript", main_js);
 }
 
+void srv_handle_tinycolor_js() {
+  server.send_P(200,"application/javascript", tinycolor_js);
+}
+
+void srv_handle_main_css() {
+  server.send_P(200,"text/css", main_css);
+}
+
 void srv_handle_modes() {
   server.send(200,"text/plain", modes);
 }
@@ -230,6 +240,8 @@ void setup(){
   Serial.println("HTTP server setup");
   server.on("/", srv_handle_index_html);
   server.on("/main.js", srv_handle_main_js);
+  server.on("/tinycolor.js", srv_handle_tinycolor_js);
+  server.on("/main.css", srv_handle_main_css);
   server.on("/modes", srv_handle_modes);
   server.on("/set", srv_handle_set);
   server.onNotFound(srv_handle_not_found);
