@@ -1,22 +1,12 @@
-
-#ifdef ARDUINO_ARCH_ESP32
-  #include <WiFi.h>
-  #include <WebServer.h>
-  #define WEB_SERVER WebServer
-  #define ESP_RESET ESP.restart()
-#else
-  #include <ESP8266WiFi.h>
-  #include <ESP8266WebServer.h>
-  #define WEB_SERVER ESP8266WebServer
-  #define ESP_RESET ESP.reset()
-#endif
+#include <ESP8266WebServer.h>
+#define WEB_SERVER ESP8266WebServer
+#define ESP_RESET ESP.reset()
 
 #include <WS2812FX.h>
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
 
 //needed for library
 #include <DNSServer.h>
-#include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 #include <ESP8266mDNS.h> // Include the mDNS library
 
@@ -25,8 +15,8 @@ extern const char main_js[];
 extern const char tinycolor_js[];
 extern const char main_css[];
 
-#define WIFI_SSID "SparkMI"
-#define WIFI_PASSWORD "123456789"
+// #define WIFI_SSID "SparkMI"
+// #define WIFI_PASSWORD "123456789"
 
 //#define STATIC_IP                       // uncomment for static IP, set IP below
 #ifdef STATIC_IP
@@ -40,7 +30,7 @@ extern const char main_css[];
 #define max(a,b) ((a)>(b)?(a):(b))
 
 #define LED_PIN 2                       // 0 = GPIO0, 2=GPIO2
-#define LED_COUNT 10
+#define LED_COUNT 16
 
 #define WIFI_TIMEOUT 30000              // checks WiFi every ...ms. Reset after this time, if WiFi cannot reconnect.
 #define HTTP_PORT 80
@@ -49,7 +39,7 @@ unsigned long auto_last_change = 0;
 unsigned long last_wifi_check_time = 0;
 String modes = "";
 uint8_t myModes[] = {}; // *** optionally create a custom list of effect/mode numbers
-bool auto_cycle = false;
+bool auto_cycle = true;
 
 WS2812FX ws2812fx = WS2812FX(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 WEB_SERVER server(HTTP_PORT);
@@ -89,6 +79,9 @@ void wifi_setup() {
   // Serial.println(WiFi.localIP());
   // Serial.println();
 
+  Serial.printf("ssid: %s\n",WiFi.SSID());
+  Serial.printf("pass: %s\n",WiFi.psk());
+
   // *** Wifi Manager ***
   //Local intialization. Once its business is done, there is no need to keep it around
   WiFiManager wifiManager;
@@ -105,7 +98,6 @@ void wifi_setup() {
   wifiManager.autoConnect("NightLamp-AP");
   //or use this for auto generated name ESP + ChipID
   // wifiManager.autoConnect();
-
   
   //if you get here you have connected to the WiFi
   Serial.println("connected...yeey :)");
@@ -120,6 +112,7 @@ void wifi_setup() {
       // Add service to MDNS-SD
       MDNS.addService("http", "tcp", 80);
   }
+ 
 }
 
 
