@@ -11,6 +11,7 @@ body {
   -webkit-box-pack: space-evenly;
       -ms-flex-pack: space-evenly;
           justify-content: space-evenly;
+  min-width: 600px;
 }
 
 .color-picker-panel {
@@ -318,4 +319,4 @@ ul li a.active {
   -ms-flex-pack: distribute;
       justify-content: space-around;
 }
-/*# sourceMappingURL=colorPicker.css.map */
+/*# sourceMappingURL=main.css.map */
