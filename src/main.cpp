@@ -32,7 +32,7 @@ extern const char main_css[];
 #define LED_PIN 2                       // 0 = GPIO0, 2=GPIO2
 #define LED_COUNT 16
 
-#define WIFI_TIMEOUT 30000              // checks WiFi every ...ms. Reset after this time, if WiFi cannot reconnect.
+#define WIFI_TIMEOUT 60000              // checks WiFi every ...ms. Reset after this time, if WiFi cannot reconnect.
 #define HTTP_PORT 80
 
 unsigned long auto_last_change = 0;
@@ -44,49 +44,43 @@ bool auto_cycle = true;
 WS2812FX ws2812fx = WS2812FX(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 WEB_SERVER server(HTTP_PORT);
 
+// For Wifi Connection Counter
+unsigned long now = millis();
+
+String oldSSID = WiFi.SSID();
+String oldPsk = WiFi.psk();
+bool isSetup = true;
+bool isHttpServerSet = false;
 
 /*
  * Connect to WiFi. If no connection is made within WIFI_TIMEOUT, ESP gets resettet.
  */
-void wifi_setup() {
-  // Serial.println();
-  // Serial.print("Connecting to ");
-  // Serial.println(WIFI_SSID);
+void wifi_setup() {  
+  Serial.printf("WiFi.ssid: %s\n",WiFi.SSID());
+  Serial.printf("WiFi.pass: %s\n",WiFi.psk());
 
-  // WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  // WiFi.mode(WIFI_STA);
-  // #ifdef STATIC_IP  
-  //   WiFi.config(ip, gateway, subnet);
-  // #endif
-
-  // unsigned long connect_start = millis();
-  // while(WiFi.status() != WL_CONNECTED) {
-  //   delay(500);
-  //   Serial.print(".");
-
-  //   if(millis() - connect_start > WIFI_TIMEOUT) {
-  //     Serial.println();
-  //     Serial.print("Tried ");
-  //     Serial.print(WIFI_TIMEOUT);
-  //     Serial.print("ms. Resetting ESP now.");
-  //     ESP_RESET;
-  //   }
-  // }
-
-  // Serial.println("");
-  // Serial.println("WiFi connected");  
-  // Serial.print("IP address: ");
-  // Serial.println(WiFi.localIP());
-  // Serial.println();
-
-  Serial.printf("ssid: %s\n",WiFi.SSID());
-  Serial.printf("pass: %s\n",WiFi.psk());
+  // *** Trying to connecting to WiFi shelf ***
+  if( !isSetup && oldSSID != "" && oldPsk != ""){
+    Serial.println("Self Connecting to WiFi...");
+    Serial.printf("old_ssid: %s\n",oldSSID);
+    Serial.printf("old_pass: %s\n",oldPsk);
+    wl_status_t res = WiFi.begin(oldSSID, oldPsk,0,NULL,true);
+    WiFi.waitForConnectResult();
+    if(res != WL_CONNECTED){
+      Serial.println("[ERROR] WiFi connection res:");
+    }
+    else{
+      Serial.println("Connect to Wifi !!!");
+    }
+    Serial.println(res);
+  }
 
   // *** Wifi Manager ***
   //Local intialization. Once its business is done, there is no need to keep it around
   WiFiManager wifiManager;
   //reset saved settings
   //wifiManager.resetSettings();
+  wifiManager.setConfigPortalTimeout(30); // Time out 40 seconds
   
   //set custom ip for portal
   //wifiManager.setAPStaticIPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
@@ -100,7 +94,10 @@ void wifi_setup() {
   // wifiManager.autoConnect();
   
   //if you get here you have connected to the WiFi
-  Serial.println("connected...yeey :)");
+  if(WiFi.status() == WL_CONNECTED) 
+    Serial.println("connected...yeey :)");
+  else
+    Serial.println("Unable to Connect to WiFi.");
 
   // *** mDNS Setup ***
   if (!MDNS.begin("NightLamp"))
@@ -114,7 +111,6 @@ void wifi_setup() {
   }
  
 }
-
 
 /*
  * Build <li> string for all modes.
@@ -211,6 +207,34 @@ void srv_handle_set() {
   server.send(200, "text/plain", "OK");
 }
 
+void CheckWifiConnection(){
+  now = millis();
+  if(now - last_wifi_check_time > WIFI_TIMEOUT) {
+    Serial.print("Checking WiFi... ");
+    if(WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi connection lost. Reconnecting...");     
+      wifi_setup();
+    } else {
+      Serial.println("OK | ip :"+ WiFi.localIP().toString());
+    }
+    last_wifi_check_time = now;
+  }
+}
+
+void setupHttpServer() {
+  Serial.println("HTTP server setup");
+  server.on("/", srv_handle_index_html);
+  server.on("/main.js", srv_handle_main_js);
+  server.on("/tinycolor.js", srv_handle_tinycolor_js);
+  server.on("/main.css", srv_handle_main_css);
+  server.on("/modes", srv_handle_modes);
+  server.on("/set", srv_handle_set);
+  server.onNotFound(srv_handle_not_found);
+  server.begin();
+  Serial.println("HTTP server started.");
+  server.handleClient();
+}
+
 void setup(){
   Serial.begin(115200);
   delay(500);
@@ -228,40 +252,27 @@ void setup(){
   ws2812fx.start();
 
   Serial.println("Wifi setup");
-  wifi_setup();
- 
-  Serial.println("HTTP server setup");
-  server.on("/", srv_handle_index_html);
-  server.on("/main.js", srv_handle_main_js);
-  server.on("/tinycolor.js", srv_handle_tinycolor_js);
-  server.on("/main.css", srv_handle_main_css);
-  server.on("/modes", srv_handle_modes);
-  server.on("/set", srv_handle_set);
-  server.onNotFound(srv_handle_not_found);
-  server.begin();
-  Serial.println("HTTP server started.");
+  wifi_setup();  
 
   Serial.println("ready!");
+  isSetup = false;
 }
 
 
 void loop() {
   MDNS.update();
-  unsigned long now = millis();
+  ws2812fx.service(); 
 
-  server.handleClient();
-  ws2812fx.service();
-
-  if(now - last_wifi_check_time > WIFI_TIMEOUT) {
-    Serial.print("Checking WiFi... ");
-    if(WiFi.status() != WL_CONNECTED) {
-      Serial.println("WiFi connection lost. Reconnecting...");     
-      wifi_setup();
-    } else {
-      Serial.println("OK | ip :"+ WiFi.localIP().toString());
-    }
-    last_wifi_check_time = now;
+  if(WiFi.status() == WL_CONNECTED && !isHttpServerSet){
+    setupHttpServer();
+    isHttpServerSet = true;
   }
+  else if(WiFi.status() != WL_CONNECTED ) {
+    isHttpServerSet = false;
+  }
+  server.handleClient();
+
+  CheckWifiConnection();
 
   if(auto_cycle && (now - auto_last_change > 10000)) { // cycle effect mode every 10 seconds
     uint8_t next_mode = (ws2812fx.getMode() + 1) % ws2812fx.getModeCount();
